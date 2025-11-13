@@ -23,8 +23,8 @@ def main():
             print("Exiting without changes.")
             return
 
-    # Remove all .json files in program data that are not the meta file
-    for file in Path(".\\program_data\\").glob("*.json"):
+    # Remove all .csv files in program data that are not the meta file
+    for file in Path(".\\program_data\\").glob("*.csv"):
         if file != PROGRAM_DATA_META_FILE:
             file.unlink()
 
@@ -46,31 +46,32 @@ def main():
             output_data = []
             for input_file in input_dir.iterdir():
                 if input_file.suffix.lower() in ['.xls', '.xlsx']:
-                    output_data += read_excel_data(input_file, headers)
+                    output_data.append(read_excel_data(input_file, headers))
                 elif input_file.suffix.lower() == '.csv':
-                    output_data += read_csv_data(input_file, headers)
-                print(f"    Read {len(output_data):,} records from {input_file.name}")
+                    output_data.append(read_csv_data(input_file, headers))
+                print(f"    Read {output_data[-1].shape[0]:,} records from {input_file.name}")
                 meta_data[input_name].update({input_file.name: len(output_data)})
 
             # Write cleaned data to program data directory
             if len(output_data) == 0:
                 continue
 
-            output_file = Path(f".\\program_data\\{input_name}_data.json")
+            output_file = Path(f".\\program_data\\{input_name}_data.csv")
             with open(output_file, 'w', encoding='utf-8') as outfile:
-                return_obj = {}
-                for order_data in output_data:
-                    order_number = order_data['order_number']
-                    if order_number not in return_obj:
-                        return_obj.update({order_data['order_number']: order_data})
-                json.dump(return_obj, outfile, indent=4)
+                pd.concat(output_data).to_csv(outfile, index=False, lineterminator='\n')
+                # return_obj = {}
+                # for order_data in output_data:
+                #     order_number = order_data['order_number']
+                #     if order_number not in return_obj:
+                #         return_obj.update({order_data['order_number']: order_data})
+                # json.dump(return_obj, outfile, indent=4)
 
     with open(PROGRAM_DATA_META_FILE, 'w', encoding='utf-8-sig') as metafile:
         meta_data.update({'last_input_date': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')})
         json.dump(meta_data, metafile, indent=4)
 
 
-def read_excel_data(file_path: Path, headers: dict) -> list:
+def read_excel_data(file_path: Path, headers: dict) -> pd.DataFrame:
     """
     Read data from an Excel file and return a list of dictionaries containing only the required headers.
     """
@@ -79,13 +80,13 @@ def read_excel_data(file_path: Path, headers: dict) -> list:
         df = pd.read_excel(file_path, dtype=str)
         cleaned_data = df[needed_headers].rename(columns=headers)
         cleaned_data['order_number'] = cleaned_data['order_number'].apply(clean_order_number)
-        return cleaned_data.to_dict(orient='records')
+        return cleaned_data
     except KeyError as e:
         print(f"Error reading {file_path.name}: Missing required headers. Please check the headers config file: {e}")
-        return []
+        return pd.DataFrame()
 
 
-def read_csv_data(file_path: Path, headers: dict) -> list:
+def read_csv_data(file_path: Path, headers: dict) -> pd.DataFrame:
     """
     Read data from a csv file and return a list of dictionaries containing only the required headers.
     """
@@ -94,11 +95,11 @@ def read_csv_data(file_path: Path, headers: dict) -> list:
         df = pd.read_csv(file_path, dtype=str)
         cleaned_data = df[needed_headers].rename(columns=headers)
         cleaned_data['order_number'] = cleaned_data['order_number'].apply(clean_order_number)
-        return cleaned_data.to_dict(orient='records')
+        return cleaned_data
 
     except KeyError as e:
         print(f"Error reading {file_path.name}: Missing required headers. Please check the headers config file: {e}")
-        return []
+        return pd.DataFrame()
 
 
 def clean_order_number(order_number: str) -> str:

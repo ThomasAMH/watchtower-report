@@ -58,14 +58,8 @@
     Generated provided country, shipping config, etc, and provides day-by-day breakdown of the statistics already calculated in the report.json
 
 
-
-
 ### Export Raw data
     - Dump all program data json files into csv's based on the headers config
 
-Note on threading:
-Each thread gets a directory to loop files through
-Thread the function that reads and trims the data.
-How to get the return, though...
-
-Join once all threads are done
+Do Later:
+Move read data to a different directory
